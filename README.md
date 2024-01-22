@@ -1,6 +1,6 @@
 Heyho, in this Project you find 2 C++ Classes and 2 Blueprint Classes + 1 level to showcase what I've done.
 The C++ classes include the 3D Navigation Grid that can be added to any level and with the Acotr Component you are able to give commands like getting a new path or move to position.
-I did not include latent actions like the origianl Unreal Character Component "Move To" functions as I didn't work with those yet and would first need to inform myself.
+I did not include latent actions like the origianl Unreal Character Component "Move To" functions as I didn't work with those yet and would first need to try things out.
 
 --------------------------------------------
 How it works
