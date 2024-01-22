@@ -10,7 +10,7 @@ But how do they move if they are not using latent actions?
 Quite a simple and cheesey workaround! As I already said I also added a new Actor Component, this component just moves with the Tick function giving the actor movement inputs into the direction of the next point that this character should move to.
 
 But how do I know when it is finished moving?
-Also quite simple: Once it finishes moving I invoke "Finished Moving". Any class that needs to know if the character finished moving can bind to this event to receive the event call. 
+Also quite simple: Once it finishes moving I invoke "Finished Moving". Any class that needs to know if the character finished moving can bind to this delegate to receive the event call. 
 
 How does the pathfinding work?
 I'm using an A* algorithm on a three-dimensional array of nodes. The Node struct can also be found in the c++ code. So I get the start and end node I want to move to based on the positions I give as parameters. 
