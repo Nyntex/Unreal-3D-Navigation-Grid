@@ -23,3 +23,7 @@ This is all the logic inside the navigation tester.
 ## End Note
 
 This project is not complete, as you might have seen I do not use latent actions like the standard unreal "move to" functions but instead just use event dispatchers to check when movement finished
+
+---
+
+This project uses was made using the [Unreal Engine 5.3](https://www.unrealengine.com/en-US/) by Epic Games
