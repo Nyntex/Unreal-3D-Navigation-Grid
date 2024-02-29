@@ -1,24 +1,25 @@
-Heyho, in this Project you find 2 C++ Classes and 2 Blueprint Classes + 1 level to showcase what I've done.
-The C++ classes include the 3D Navigation Grid that can be added to any level and with the Acotr Component you are able to give commands like getting a new path or move to position.
-I did not include latent actions like the origianl Unreal Character Component "Move To" functions as I didn't work with those yet and would first need to try things out.
+# 3D Navigation Grid for Unreal Engine
 
---------------------------------------------
-How it works
---------------------------------------------
+This is my first project made during my 3rd semester at [S4G school for Games](https://www.school4games.net/). I created this for our 3rd semester project for flying enemies which sadly didn't make the cut.
+But that doesn't stop me from putting it in here and showcasing my work.
 
-But how do they move if they are not using latent actions?
-Quite a simple and cheesey workaround! As I already said I also added a new Actor Component, this component just moves with the Tick function giving the actor movement inputs into the direction of the next point that this character should move to.
+---
 
-But how do I know when it is finished moving?
-Also quite simple: Once it finishes moving I invoke "Finished Moving". Any class that needs to know if the character finished moving can bind to this delegate to receive the event call. 
+The grid is a three dimensional array of nodes that get created and validated on start. I wanted to save them as an editable variable but Unreal really struggles with showing arrays in the editor, dropping fps to 5 or less when showing 1.000 or more items, which is unfortunate at best. Therefore the array gets filled on start and after extensive testing I figured it would be no problem. 
 
-How does the pathfinding work?
-I'm using an A* algorithm on a three-dimensional array of nodes. The Node struct can also be found in the c++ code. So I get the start and end node I want to move to based on the positions I give as parameters. 
-You can either give Actors or Vectors as input paramaters while actors are being prioritized over the vector. Once called I search for the nodes I want to move to and calculate their cost based on the distance to the goal node and the total moves that you need to do to get to that node
-The next node that gets checked will always be the one that has the lowest total cost, this way I will find one of the fastest ways to get to the desired destination
+The grid visualized:
 
--------------------------------------------
-End Note
--------------------------------------------
+<img src="readme/VisualizedGrid.png" width="400">
 
-This whole thing is not completely finished, but it's working as you'd expect. In the future I plan to add latent move actions instead of this hacky workaround and general improvements I don't know yet.
+But this repo does not just include the grid, a movement component handling pathfinding through an A* Algorithm is also included.
+This is all the logic inside the navigation tester.
+
+<img src="readme/NavigationTester.png" width="700">
+
+<img src="readme/MovementComponent.gif" width="400">
+
+---
+
+## End Note
+
+This project is not complete, as you might have seen I do not use latent actions like the standard unreal "move to" functions but instead just use event dispatchers to check when movement finished
