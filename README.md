@@ -11,7 +11,7 @@ The grid visualized:
 
 <img src="readme/VisualizedGrid.png" width="400">
 
-But this repo does not just include the grid, a movement component handling pathfinding through an A* Algorithm is also included.
+The movement component handles pathfinding using an A* Algorithm.
 This is all the logic inside the navigation tester.
 
 <img src="readme/NavigationTester.png" width="700">
@@ -22,7 +22,7 @@ This is all the logic inside the navigation tester.
 
 ## End Note
 
-This project is not complete, as you might have seen I do not use latent actions like the standard unreal "move to" functions but instead just use event dispatchers to check when movement finished
+This project is not complete, as you might have seen I do not use latent actions like the standard unreal "move to" functions but instead just use event dispatchers to check when movement finished.
 
 ---
 
