@@ -26,4 +26,4 @@ This project is not complete, as you might have seen I do not use latent actions
 
 ---
 
-This project uses was made using the [Unreal Engine 5.3](https://www.unrealengine.com/en-US/) by Epic Games
+This project was made using the [Unreal Engine 5.4](https://www.unrealengine.com/en-US/) by Epic Games
