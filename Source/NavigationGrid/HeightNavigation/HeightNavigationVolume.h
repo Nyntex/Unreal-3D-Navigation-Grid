@@ -83,7 +83,7 @@ public:
     FVector GetExtents() const;
 	UFUNCTION(BlueprintCallable, Category = "Height Navigation Volume")
 	bool IsGridEmpty() const;
-	void SetNodeCount();
+	void InitializeNodeCount();
 	UFUNCTION(BlueprintCallable, Category = "Height Navigation Volume")
 	FVector GetRandomMovablePosition() const;
 

@@ -6,6 +6,10 @@
 //#include "Builders/CubeBuilder.h"
 //#include "Components/BrushComponent.h"
 //#include "Engine/BrushBuilder.h"
+#include <vector>
+#include <queue>
+
+#include "VectorTypes.h"
 #include "Kismet/KismetMathLibrary.h"
 
 
@@ -18,14 +22,18 @@ void AHeightNavigationVolume::GenerateNavNodeGrid()
 {
     ClearGrid();
 
-    SetNodeCount();
+    InitializeNodeCount();
 
+    //Reserving space for less resizing, since we already know the size of all 3 arrays
+    navNodeGrid.Reserve(xNodes);
     for (int x = 0; x < xNodes; x++)
     {
         navNodeGrid.Add(F_YLayer());
+        navNodeGrid[x].yLayer.Reserve(yNodes);
         for (int y = 0; y < yNodes; y++)
         {
             navNodeGrid[x].yLayer.Add(F_ZLayer());
+            navNodeGrid[x][y].zLayer.Reserve(zNodes);
             for (int z = 0; z < zNodes; z++)
             {
                 FNavNode node;
@@ -371,7 +379,7 @@ bool AHeightNavigationVolume::IsGridEmpty() const
     return false;
 }
 
-void AHeightNavigationVolume::SetNodeCount()
+void AHeightNavigationVolume::InitializeNodeCount()
 {
     xNodes = int((GetExtents().X * 2) / distanceBetweenNodes) + 1;
     yNodes = int((GetExtents().Y * 2) / distanceBetweenNodes) + 1;
@@ -497,12 +505,15 @@ void AHeightNavigationVolume::GetPath(FVector startPos, AActor* startActor, FVec
     //Setting up three-dimensional vectors with non constant size
     std::vector<std::vector<std::vector<bool>>> closedListBool = std::vector<std::vector<std::vector<bool>>>();
 
+    closedListBool.reserve(xNodes);
     for (int x = 0; x < xNodes; x++)
     {
         closedListBool.push_back(std::vector<std::vector<bool>>());
+        closedListBool[x].reserve(yNodes);
         for (int y = 0; y < yNodes; y++)
         {
             closedListBool[x].push_back(std::vector<bool>());
+            closedListBool[x][y].reserve(zNodes);
             for (int z = 0; z < zNodes; z++)
             {
                 closedListBool[x][y].push_back(bool());
