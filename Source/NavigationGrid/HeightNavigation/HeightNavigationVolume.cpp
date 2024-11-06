@@ -10,7 +10,9 @@
 #include <queue>
 
 #include "VectorTypes.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 
 void AHeightNavigationVolume::DrawBox(FVector pos, FColor color) const
@@ -40,7 +42,18 @@ void AHeightNavigationVolume::GenerateNavNodeGrid()
                 node.X = x;
                 node.Y = y;
                 node.Z = z;
+
+                TArray<AActor*> CollidingActors;
+                if(UKismetSystemLibrary::BoxOverlapActors(this, GetWorldPositionFromNode(node), FVector(distanceBetweenNodes / 4), {},nullptr,{this}, CollidingActors))
+                {
+                    node.blocked = true;
+#if WITH_EDITOR
+                    DrawDebugBox(GetWorld(), GetWorldPositionFromNode(node), FVector(distanceBetweenNodes / 4), FColor::Red, false, 5);
+#endif
+                }
+
                 navNodeGrid[x][y].zLayer.Add(node);
+
             }
         }
     }
@@ -82,7 +95,12 @@ void AHeightNavigationVolume::SetupNeighbors()
 
                     GetWorld()->LineTraceSingleByChannel(result, start, end, ECC_WorldStatic, traceParams);
                     GetWorld()->LineTraceSingleByChannel(resultReversed, end, start, ECC_WorldStatic, traceParams);
-                    if(!result.bBlockingHit && !resultReversed.bBlockingHit)
+
+#if WITH_EDITOR
+                    DrawDebugLine(GetWorld(), start, end, result.bBlockingHit || resultReversed.bBlockingHit ? FColor::Red : FColor::Green, false, 5);
+#endif
+
+                    if(!result.bBlockingHit && !resultReversed.bBlockingHit && !neighbor.blocked)
                     {
                         navNodeGrid[x][y][z].neighbors.Add(FVector(neighbor.X, neighbor.Y, neighbor.Z));
                     }
@@ -114,15 +132,17 @@ void AHeightNavigationVolume::ClearGrid()
 
 void AHeightNavigationVolume::ShowGrid()
 {
-    for(int x = 0; x < navNodeGrid.Num(); x++)
+    for(int x = 0; x < xNodes; x++)
     {
-        for(int y = 0; y < navNodeGrid[0].Num(); y++)
+        for(int y = 0; y < yNodes; y++)
         {
-            for(int z = 0; z < navNodeGrid[0][0].Num(); z++)
+            for(int z = 0; z < zNodes; z++)
             {
                 FNavNode currentNode = navNodeGrid[x][y][z];
                 FVector worldPosition = GetWorldPositionFromNode(currentNode);
+#if WITH_EDITOR
                 DrawBox(worldPosition, navNodeGrid[x][y][z].blocked == true ? FColor::Red : FColor::Green);
+#endif
             }
         }
     }
@@ -132,6 +152,9 @@ void AHeightNavigationVolume::ShowGrid()
 void AHeightNavigationVolume::GetNeighbors(FNavNode node, TArray<F_YLayer>& grid, TArray<FNavNode>& neighbors)
 {
     if (IsGridEmpty()) return;
+
+    neighbors.Empty();
+    neighbors.Reserve(6);
 
     const bool forward = node.X + 1 < xNodes;
     const bool back = node.X - 1 >= 0;
@@ -194,6 +217,7 @@ FNavNode AHeightNavigationVolume::GetNodeFromPosition(FVector position, TArray<F
 
     if (!IsInsideVolume(position)) return badNode;
 
+    //Calculate a close node near the input positions
     int x = -1;
     for(int i = 1; i <= xNodes; i++)
     {
@@ -215,6 +239,7 @@ FNavNode AHeightNavigationVolume::GetNodeFromPosition(FVector position, TArray<F
         if (!IsInsideVolume(position - GetActorUpVector() * (distanceBetweenNodes * i))) break;
     }
 
+    //ensure this node is not outside the array (it can't be 0 at this time)
     if(x >= xNodes)
     {
         x = xNodes - 1;
@@ -332,7 +357,98 @@ FNavNode AHeightNavigationVolume::GetNodeFromPosition(FVector position, TArray<F
         }
     }
 
-    return grid[tempX][tempY][tempZ];
+	if (!grid[tempX][tempY][tempZ].blocked) return grid[tempX][tempY][tempZ];
+
+#if WITH_EDITOR
+    GEditor->AddOnScreenDebugMessage(INDEX_NONE, 5, FColor::Red,
+        TEXT("NavGrid GetNodeFromPosition - Nearest node is not actually valid!"));
+#endif
+    UE_LOG(LogTemp, Error, TEXT("NavGrid GetNodeFromPosition - Nearest node is not actually valid!"));
+
+    //This shouldn't happen too often, usually the target should be on a valid position
+    //This just confirms, that we receive a valid position
+    int index = 0;
+    TArray<FNavNode> CheckedNodes;
+    TArray<FNavNode> NodesToCheck;
+    NodesToCheck.Add(grid[tempX][tempY][tempZ]);
+    FNavNode ClosestNode;
+    float ClosestDistance = FLT_MAX;
+
+    while (CheckedNodes.Num() < (xNodes*yNodes*zNodes) && ClosestDistance == FLT_MAX)
+    {
+        const FVector CheckingValues[26] = { //To check all possible neighboring positions
+            //top
+            FVector(0,0,1),
+            FVector(1,0,1),
+            FVector(0,1,1),
+            FVector(1,1,1),
+            FVector(-1,0,1),
+            FVector(0,-1,1),
+            FVector(-1,-1,1),
+            FVector(1,-1,1),
+            FVector(-1,1,1),
+            //mid
+            FVector(1,0,0),
+            FVector(0,1,0),
+            FVector(1,1,0),
+            FVector(-1,0,0),
+            FVector(0,-1,0),
+            FVector(-1,-1,0),
+            FVector(1,-1,0),
+            FVector(-1,1,0),
+            //bot
+            FVector(0,0,-1),
+            FVector(1,0,-1),
+            FVector(0,1,-1),
+            FVector(1,1,-1),
+            FVector(-1,0,-1),
+            FVector(0,-1,-1),
+            FVector(-1,-1,-1),
+            FVector(1,-1,-1),
+            FVector(-1,1,-1),
+        };
+
+        for(int i = NodesToCheck.Num() - 1; i >= 0; i--)
+        {
+            if(!NodesToCheck[i].blocked)
+            {
+                float distance = FVector::Distance(GetWorldPositionFromNode(NodesToCheck[i]), position);
+                if(distance < ClosestDistance)
+                {
+                    ClosestDistance = distance;
+                    ClosestNode = NodesToCheck[i];
+                }
+            }
+	        for(int j = 0; j < CheckingValues->Length(); j++)
+	        {
+                int CheckX = NodesToCheck[i].X + CheckingValues[j].X;
+                int CheckY = NodesToCheck[i].Y + CheckingValues[j].Y;
+                int CheckZ = NodesToCheck[i].Z + CheckingValues[j].Z;
+
+
+		        if(CheckX < xNodes && CheckX >= 0 &&
+                    CheckY < yNodes && CheckY >= 0 &&
+                    CheckZ < zNodes && CheckZ >= 0)
+		        {
+                    if(!CheckedNodes.Contains(grid[CheckX][CheckY][CheckZ]))
+                        NodesToCheck.Add(grid[CheckX][CheckY][CheckZ]);
+		        }
+	        }
+
+            CheckedNodes.Add(NodesToCheck[i]);
+            NodesToCheck.RemoveAt(i);
+        }
+    }
+
+#if WITH_EDITOR
+    if(ClosestNode.blocked)
+		GEditor->AddOnScreenDebugMessage(INDEX_NONE, 5, FColor::Red,
+        TEXT("NavGrid GetNodeFromPosition - Node is still blocked"));
+#endif
+    if (ClosestNode.blocked)
+        UE_LOG(LogTemp, Error, TEXT("NavGrid GetNodeFromPosition - Node is still blocked"));
+
+    return ClosestNode;
 }
 
 FVector AHeightNavigationVolume::GetWorldPositionFromNode(FNavNode node) const
@@ -364,6 +480,23 @@ void AHeightNavigationVolume::BeginPlay()
     GenerateNavNodeGrid();
 }
 
+AHeightNavigationVolume* AHeightNavigationVolume::EvaluateNavGrid(UObject* WorldContext, FVector StartPosition, FVector EndPosition)
+{
+    TArray<AActor*> PossibleVolumes;
+	UGameplayStatics::GetAllActorsOfClass(WorldContext, StaticClass(), PossibleVolumes);
+
+    for(AActor* actor : PossibleVolumes)
+    {
+        AHeightNavigationVolume* volume = Cast<AHeightNavigationVolume>(actor);
+        if(volume->IsInsideVolume(StartPosition) && volume->IsInsideVolume(EndPosition))
+        {
+            return volume;
+        }
+    }
+
+    return nullptr;
+}
+
 FVector AHeightNavigationVolume::GetExtents() const
 {
     //UCubeBuilder* builder = (UCubeBuilder*)GetBrushBuilder(); //This is to get Brush Settings
@@ -389,6 +522,7 @@ void AHeightNavigationVolume::InitializeNodeCount()
 FVector AHeightNavigationVolume::GetRandomMovablePosition() const
 {
     TArray<FVector> possibleSpots = TArray<FVector>();
+    possibleSpots.Reserve(xNodes * yNodes * zNodes);
 
     for(int x = 0; x < xNodes; x++)
     {

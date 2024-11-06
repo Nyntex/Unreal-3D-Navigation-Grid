@@ -7,7 +7,7 @@
 #include "NavNode.h"
 #include "HeightNavigationVolume.generated.h"
 
-UENUM(BlueprintType)
+UENUM()
 enum class Get_Success : uint8
 {
     Success,
@@ -138,6 +138,10 @@ public:
 	//UFUNCTION(CallInEditor, Category = "Height Navigation Volume", meta = (EditCondition = "showDebugSettings==true", EditConditionHides))
 	//void showTestPositions();
 	*/
+
+	//Checks which nav grid fits for both given positions, returns null if there is no valid nav Grid for the given position
+	UFUNCTION(BlueprintCallable, meta=(WorldContext="WorldContext"), Category="Height Navigation Volume", BlueprintPure)
+	static AHeightNavigationVolume* EvaluateNavGrid(UObject* WorldContext, FVector StartPosition, FVector EndPosition);
 
 	//Member
 public:

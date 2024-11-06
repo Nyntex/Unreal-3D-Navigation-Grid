@@ -142,8 +142,6 @@ public:
 
 	bool IsFirstCall = true;
 
-	bool WantToCancel = false;
-
 public:
 	FLatentActionInfo LatentActionInfo;
 
@@ -162,7 +160,34 @@ public:
 
 	void GetNewPath();
 
-	void UpdateMovement(float DeltaTime);
+	/*
+	 *Uses the PathIndex to move to locations. The MoveLocation has no relevance for this
+	 *function because this one uses the path, the GetNewPath() method retrieves the path using
+	 *the move location. Moves the target using control inputs, I bet there are better ways but this works for me
+	 *
+	 **/
+	void UpdateMovement();
+
+	void MoveInDirection(FVector Direction);
+
+	bool PathValidationCheck(int Try);
+
+	//Receive the normalised direction to the given target location (Base is MovementTarget->ActorLocation)
+	FVector DirectionToLocation(FVector Location);
+	static FVector DirectionToLocation(FVector StartLocation, FVector Location);
+
+	/**
+	 * Checks 2 positions, the goal position and one position before it.
+	 * With each call the position gets put further and further away until it is the end where it gets reset
+	 * to a couple positions in front of the current location.
+	 *
+	 * Does nothing when to close to the goal.
+	 *
+	 * Runs every couple milliseconds.
+	 *
+	 * @param DeltaTime		Required to increase the timer
+	 */
+	void UpdateDirectPath(float DeltaTime);
 
 #if WITH_EDITOR
 	virtual FString GetDescription() const override
@@ -175,9 +200,18 @@ public:
 protected:
 	TArray<FVector> Path = TArray<FVector>();
 
-	FVector LastPositionToMoveTo = FVector::Zero();
+	int PathIndex = 0;
 
-	float ClosenessThreshold = 0;
+	float ClosenessThreshold = 50.f;
+
+
+#pragma region DirectPathLoop
+
+	float Interval = 0.0f;
+	float CurrentInterval = 0.3f;
+	int IndexToCheck = 0;
+
+#pragma endregion
 
 };
 #pragma endregion
@@ -189,5 +223,5 @@ namespace MoveToLocationOrActor3DStatics
 	//Action will not get called on the same target twice.
 	static std::map<APawn*, UMoveToLocationOrActor3D*> CurrentMovingObjects = std::map<APawn*, UMoveToLocationOrActor3D*>();
 
-	static std::map<APawn*, FLatentMoveToActorOrLocation3D*>  CurrentMovingPawns = std::map<APawn*, FLatentMoveToActorOrLocation3D*>();
+	static TArray<std::pair<APawn*, FLatentMoveToActorOrLocation3D*>> CurrentMovingPawns;
 }
