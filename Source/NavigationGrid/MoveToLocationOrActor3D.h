@@ -92,11 +92,11 @@ enum class EMoveInputPins : uint8
 UENUM()
 enum class EMoveOutputPins : uint8
 {
-	OnStarted,		//Called only once on start
-	OnMove,			//Every Frame
-	OnCanceled,		//When node is canceled
-	OnCompleted,	//when the movement is completed
-	OnFailed,		//When movement failed
+	OnStarted		UMETA(DisplayName = "On Started"),		//Called only once on start
+	OnMove			UMETA(DisplayName = "On Move"),			//Every Frame
+	OnCanceled		UMETA(DisplayName = "On Canceled"),		//When node is canceled
+	OnCompleted		UMETA(DisplayName = "On Completed"),	//when the movement is completed
+	OnFailed		UMETA(DisplayName = "On Failed"),		//When movement failed
 };
 
 UCLASS()
@@ -189,6 +189,8 @@ public:
 	 */
 	void UpdateDirectPath(float DeltaTime);
 
+	bool HasDirectAccessToLocation(const FVector& Location, bool ShowLines = true) const;
+
 #if WITH_EDITOR
 	virtual FString GetDescription() const override
 	{
@@ -207,7 +209,7 @@ protected:
 
 #pragma region DirectPathLoop
 
-	float Interval = 0.0f;
+	float Interval = 0.3f;
 	float CurrentInterval = 0.3f;
 	int IndexToCheck = 0;
 

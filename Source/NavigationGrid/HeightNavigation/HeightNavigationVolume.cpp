@@ -44,7 +44,7 @@ void AHeightNavigationVolume::GenerateNavNodeGrid()
                 node.Z = z;
 
                 TArray<AActor*> CollidingActors;
-                if(UKismetSystemLibrary::BoxOverlapActors(this, GetWorldPositionFromNode(node), FVector(distanceBetweenNodes / 4), {},nullptr,{this}, CollidingActors))
+                if (UKismetSystemLibrary::BoxOverlapActors(this, GetWorldPositionFromNode(node), FVector(distanceBetweenNodes / 4), { ObjectTypeQuery1, ObjectTypeQuery2 }, nullptr, { this }, CollidingActors))
                 {
                     node.blocked = true;
 #if WITH_EDITOR
@@ -89,7 +89,7 @@ void AHeightNavigationVolume::SetupNeighbors()
                     FCollisionQueryParams traceParams = FCollisionQueryParams(FName(TEXT("trace")), true, this);
                     traceParams.bTraceComplex = true;
                     traceParams.bReturnPhysicalMaterial = false;
-                    traceParams.bFindInitialOverlaps = true;
+                    traceParams.bFindInitialOverlaps = false;
                     FHitResult result(ForceInit);
                     FHitResult resultReversed(ForceInit);
 
@@ -132,6 +132,7 @@ void AHeightNavigationVolume::ClearGrid()
 
 void AHeightNavigationVolume::ShowGrid()
 {
+    if (navNodeGrid.IsEmpty()) return;
     for(int x = 0; x < xNodes; x++)
     {
         for(int y = 0; y < yNodes; y++)

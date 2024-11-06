@@ -303,63 +303,56 @@ void FLatentMoveToActorOrLocation3D::UpdateDirectPath(float DeltaTime)
 		return;
 	}
 
-	FHitResult HitResultTop;
-	FHitResult HitResultBot;
-	FHitResult HitResultLeft;
-	FHitResult HitResultRight;
-
-	UWorld* world = MovementTarget->GetWorld();
-	FVector Origin;
-	FVector BoxExtent;
-	MovementTarget->GetActorBounds(true, Origin, BoxExtent);
-
 	//Check if we have a direct path to the goal location and set it accordingly
 	{
-		world->LineTraceSingleByChannel(HitResultTop, MovementTarget->GetActorLocation() + (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), MoveLocation, ECC_Visibility);
-		world->LineTraceSingleByChannel(HitResultBot, MovementTarget->GetActorLocation() - (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), MoveLocation, ECC_Visibility);
-		world->LineTraceSingleByChannel(HitResultLeft, MovementTarget->GetActorLocation() - (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), MoveLocation, ECC_Visibility);
-		world->LineTraceSingleByChannel(HitResultRight, MovementTarget->GetActorLocation() + (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), MoveLocation, ECC_Visibility);
-
-		if (!HitResultTop.bBlockingHit && !HitResultBot.bBlockingHit && !HitResultLeft.bBlockingHit && !HitResultRight.bBlockingHit)
+		if (HasDirectAccessToLocation(MoveLocation))
 		{
 			Path.Empty();
 			PathIndex = 0;
 			Path.Add(MoveLocation);
 			return;
 		}
-
-#if WITH_EDITOR
-		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() + (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), MoveLocation, HitResultTop.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
-		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() - (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), MoveLocation, HitResultBot.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
-		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() - (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), MoveLocation, HitResultLeft.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
-		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() + (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), MoveLocation, HitResultRight.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
-#endif
 	}
 
 	//Check if we have a direct path to any previous location
 	//this check should be run over multiple frames
 	{
-		world->LineTraceSingleByChannel(HitResultTop, MovementTarget->GetActorLocation() + (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), Path[IndexToCheck], ECC_Visibility);
-		world->LineTraceSingleByChannel(HitResultBot, MovementTarget->GetActorLocation() - (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), Path[IndexToCheck], ECC_Visibility);
-		world->LineTraceSingleByChannel(HitResultLeft, MovementTarget->GetActorLocation() - (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), Path[IndexToCheck], ECC_Visibility);
-		world->LineTraceSingleByChannel(HitResultRight, MovementTarget->GetActorLocation() + (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), Path[IndexToCheck], ECC_Visibility);
-
-		if (!HitResultTop.bBlockingHit && !HitResultBot.bBlockingHit && !HitResultLeft.bBlockingHit && !HitResultRight.bBlockingHit)
+		if (HasDirectAccessToLocation(Path[IndexToCheck]))
 		{
 			PathIndex = IndexToCheck;
 			return;
 		}
+	}
+}
+
+bool FLatentMoveToActorOrLocation3D::HasDirectAccessToLocation(const FVector& Location, bool ShowLines) const
+{
+	FHitResult HitResultTop(ForceInit);
+	FHitResult HitResultBot(ForceInit);
+	FHitResult HitResultLeft(ForceInit);
+	FHitResult HitResultRight(ForceInit);
+
+	UWorld* world = MovementTarget->GetWorld();
+	FVector Origin;
+	FVector BoxExtent;
+	MovementTarget->GetActorBounds(true, Origin, BoxExtent);
+
+	world->LineTraceSingleByChannel(HitResultTop, MovementTarget->GetActorLocation() + (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), Location, ECC_Visibility);
+	world->LineTraceSingleByChannel(HitResultBot, MovementTarget->GetActorLocation() - (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), Location, ECC_Visibility);
+	world->LineTraceSingleByChannel(HitResultLeft, MovementTarget->GetActorLocation() - (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), Location, ECC_Visibility);
+	world->LineTraceSingleByChannel(HitResultRight, MovementTarget->GetActorLocation() + (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), Location, ECC_Visibility);
 
 #if WITH_EDITOR
-		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() + (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), Path[IndexToCheck], HitResultTop.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
-		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() - (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), Path[IndexToCheck], HitResultBot.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
-		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() - (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), Path[IndexToCheck], HitResultLeft.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
-		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() + (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), Path[IndexToCheck], HitResultRight.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
-#endif
+	if(ShowLines)
+	{
+		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() + (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), Location, HitResultTop.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
+		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() - (MovementTarget->GetActorUpVector() * BoxExtent.Z * 1.5f), Location, HitResultBot.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
+		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() - (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), Location, HitResultLeft.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
+		DrawDebugLine(MovementTarget->GetWorld(), MovementTarget->GetActorLocation() + (MovementTarget->GetActorRightVector() * BoxExtent.X * 1.5f), Location, HitResultRight.bBlockingHit ? FColor::Red : FColor::Green, false, Interval);
 	}
+#endif
 
-
-
+	return !HitResultTop.bBlockingHit && !HitResultBot.bBlockingHit && !HitResultLeft.bBlockingHit && !HitResultRight.bBlockingHit;
 }
 
 void FLatentMoveToActorOrLocation3D::MoveInDirection(FVector Direction)
