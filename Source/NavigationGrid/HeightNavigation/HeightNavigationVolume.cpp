@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "NavigationGrid/PathRequesting/NavigationGridSubsystem.h"
 
 
 void AHeightNavigationVolume::DrawBox(FVector pos, FColor color) const
@@ -478,7 +479,28 @@ FVector AHeightNavigationVolume::GetGridSize() const
 void AHeightNavigationVolume::BeginPlay()
 {
     Super::BeginPlay();
+    
+    UNavigationGridSubsystem* Subsystem = UNavigationGridSubsystem::Get(this);
+    if (!::IsValid(Subsystem))
+    {
+        return;
+    }
+    
+    Subsystem->RegisterNavVolume(MakeVolumeData());
+    
     GenerateNavNodeGrid();
+}
+
+FNavGridData AHeightNavigationVolume::MakeVolumeData() const
+{
+    FNavGridData GridData{};
+    GridData.GridTransform = GetTransform();
+    GridData.GridLayers = navNodeGrid;
+    GridData.XNodes = xNodes;
+    GridData.YNodes = yNodes;
+    GridData.ZNodes = zNodes;
+    
+    return GridData;
 }
 
 AHeightNavigationVolume* AHeightNavigationVolume::EvaluateNavGrid(UObject* WorldContext, FVector StartPosition, FVector EndPosition)
@@ -672,7 +694,6 @@ void AHeightNavigationVolume::GetPath(FVector startPos, AActor* startActor, FVec
 
     openQueue.push(grid[x][y][z]);
 
-
     //steps = 0;
     while (!openQueue.empty())
     {
@@ -688,7 +709,7 @@ void AHeightNavigationVolume::GetPath(FVector startPos, AActor* startActor, FVec
 
         float gNew, hNew, fNew;
 
-        for(auto neighbor : currentNode.neighbors)
+        for(const FVector& neighbor : currentNode.neighbors)
         {
             if(IsValid(neighbor.X, neighbor.Y, neighbor.Z))
             {

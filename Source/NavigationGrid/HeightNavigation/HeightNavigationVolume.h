@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Volume.h"
 #include "NavNode.h"
+#include "NavigationGrid/Data/NavGridData.h"
 #include "HeightNavigationVolume.generated.h"
 
 UENUM()
@@ -125,8 +126,6 @@ public:
 
 	FVector GetGridSize() const;
 
-	void BeginPlay() override;
-
 	/*
 	//TEST FUNCTIONS!!!!
 	//UFUNCTION(CallInEditor, Category = "Height Navigation Volume", meta = (EditCondition = "showDebugSettings==true", EditConditionHides))
@@ -149,6 +148,10 @@ public:
 	float distanceBetweenNodes = 800;
 
 protected:
+	virtual void BeginPlay() override;
+	
+	FNavGridData MakeVolumeData() const;
+	
 	UPROPERTY(EditInstanceOnly, Category = "Height Navigation Volume")
 	bool showDebugSettings = false;
 

@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿
+
+#pragma once
 
 #include "NavigationGrid/LatentAction/LAMoveToLocationOrActor3D.h"
 #include "NavigationGrid/AsyncAction/AAMoveToLocationOrActor3D.h"

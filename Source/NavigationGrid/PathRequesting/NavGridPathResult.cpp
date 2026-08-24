@@ -1,0 +1,2 @@
+﻿
+#include "NavGridPathResult.h"
