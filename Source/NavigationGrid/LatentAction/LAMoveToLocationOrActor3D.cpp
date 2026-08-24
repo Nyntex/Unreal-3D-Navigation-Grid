@@ -1,102 +1,16 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "MoveToLocationOrActor3D.h"
+#include "LAMoveToLocationOrActor3D.h"
 
-#include "VectorTypes.h"
-#include "HeightNavigation/HeightNavigationVolume.h"
+#include "NavigationGrid/HeightNavigation/HeightNavigationVolume.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "NavigationGrid/MoveToLocationOrActor3DStatics.h"
 
-void UMoveToActorOrLocation3D::Stop3DMovement(APawn* WorldContext)
-{
-	if (!WorldContext->IsValidLowLevel()) return;
 
-	//auto it = MoveToLocationOrActor3DStatics::CurrentMovingPawns.find(WorldContext);
-	for(auto it : MoveToLocationOrActor3DStatics::CurrentMovingPawns)
-	{
-		if (!it.first) return;
+#define ResponseLatentInfo LatentActionInfo.ExecutionFunction, LatentActionInfo.Linkage, LatentActionInfo.CallbackTarget
 
-		if (it.first == WorldContext)
-		{
-			if (!it.second) return;
-			it.second->Output = EMoveOutputPins::OnCanceled;
-#if WITH_EDITOR
-			GEditor->AddOnScreenDebugMessage(INDEX_NONE, 5, FColor::Red,
-				TEXT("Latent Action Movement Stopped for ") + WorldContext->GetName());
-#endif
-		}
-	}
-}
-
-#pragma region AsyncAction
-UMoveToLocationOrActor3D* UMoveToLocationOrActor3D::MoveToLocationOrActor3D(APawn* WorldContext, FVector Location)
-{
-	UMoveToLocationOrActor3D* Action = NewObject<UMoveToLocationOrActor3D>();
-	Action->MovingTarget = WorldContext;
-	Action->LocationToMoveTo = Location;
-
-	auto iterator = MoveToLocationOrActor3DStatics::CurrentMovingObjects.find(WorldContext);
-
-	if(iterator != MoveToLocationOrActor3DStatics::CurrentMovingObjects.end())
-	{
-		iterator->second->CancelMovement();
-		MoveToLocationOrActor3DStatics::CurrentMovingObjects.erase(iterator);
-	}
-
-	MoveToLocationOrActor3DStatics::CurrentMovingObjects.try_emplace(WorldContext, Action);
-
-	return Action;
-}
-
-void UMoveToLocationOrActor3D::Activate()
-{
-	Super::Activate();
-
-	World = GEngine->GetWorldFromContextObject(MovingTarget, EGetWorldErrorMode::ReturnNull);
-
-#if WITH_EDITOR
-	if(World == nullptr && GEditor != nullptr)
-	{
-		World = GEditor->GetEditorWorldContext().World();
-	}
-#endif
-
-	if(!World)
-	{
-		OnFailed.Broadcast();
-		FinishMovement();
-		return;
-	}
-}
-
-void UMoveToLocationOrActor3D::CancelMovement()
-{
-	OnCanceled.Broadcast();
-	FinishMovement();
-}
-
-void UMoveToLocationOrActor3D::Tick(float DeltaTime)
-{
-	if (!MovingTarget || !World) return;
-	UpdateMove(DeltaTime);
-	OnMove.Broadcast();
-}
-
-void UMoveToLocationOrActor3D::UpdateMove(float DeltaTime)
-{
-
-}
-
-void UMoveToLocationOrActor3D::FinishMovement()
-{
-	MoveToLocationOrActor3DStatics::CurrentMovingObjects.erase(MovingTarget);
-	MovingTarget = nullptr;
-	World = nullptr;
-	SetReadyToDestroy();
-}
-#pragma endregion
-
-#pragma region LatentAction
-void UMoveToActorOrLocation3D::MoveToActorOrLocation3D(APawn* WorldContext, FLatentActionInfo LatentInfo,
+void ULAMoveToLocationOrActor3D::MoveToActorOrLocation3D(APawn* WorldContext, FLatentActionInfo LatentInfo,
 	EMoveInputPins InputPins, EMoveOutputPins& OutputPins, FVector MoveLocation, FVector& CurrentMoveDirection)
 {
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::ReturnNull);
@@ -136,40 +50,47 @@ void UMoveToActorOrLocation3D::MoveToActorOrLocation3D(APawn* WorldContext, FLat
 	}
 }
 
-#define ResponseLatentInfo LatentActionInfo.ExecutionFunction, LatentActionInfo.Linkage, LatentActionInfo.CallbackTarget
+void ULAMoveToLocationOrActor3D::Stop3DMovement(APawn* WorldContext)
+{
+	if (!WorldContext->IsValidLowLevel()) return;
+
+	for(TPair<APawn*, FLatentMoveToActorOrLocation3D*>& Pair : MoveToLocationOrActor3DStatics::CurrentMovingPawns)
+	{
+		if (!Pair.Key) return;
+
+		if (Pair.Key == WorldContext)
+		{
+			if (!Pair.Value)
+			{
+				return;
+			}
+			
+			Pair.Value->Output = EMoveOutputPins::OnCanceled;
+#if WITH_EDITOR
+			GEditor->AddOnScreenDebugMessage(INDEX_NONE, 5, FColor::Red,
+				TEXT("Latent Action Movement Stopped for ") + WorldContext->GetName());
+#endif
+		}
+	}
+}
 
 void FLatentMoveToActorOrLocation3D::UpdateOperation(FLatentResponse& Response)
 {
-	//FPendingLatentAction::UpdateOperation(Response);
-
 	switch (Output)
 	{
 	case EMoveOutputPins::OnCanceled:
 	case EMoveOutputPins::OnCompleted:
 	case EMoveOutputPins::OnFailed:
 	{
-		std::pair<APawn*, FLatentMoveToActorOrLocation3D*>* PairToRemove = nullptr;
-			for(std::pair<APawn*, FLatentMoveToActorOrLocation3D*> pair : MoveToLocationOrActor3DStatics::CurrentMovingPawns)
+		for (int i = MoveToLocationOrActor3DStatics::CurrentMovingPawns.Num()-1; i >= 0; --i)
+		{
+			const TPair<APawn*, FLatentMoveToActorOrLocation3D*>& Pair = MoveToLocationOrActor3DStatics::CurrentMovingPawns[i];
+			if (Pair.Key == MovementTarget && Pair.Value->LatentActionInfo.UUID == LatentActionInfo.UUID)
 			{
-				if (pair.first == MovementTarget && pair.second->LatentActionInfo.UUID == LatentActionInfo.UUID)
-				{
-					PairToRemove = &pair;
-					break;
-				}
+				MoveToLocationOrActor3DStatics::CurrentMovingPawns.RemoveAt(i, EAllowShrinking::No);
+				break;
 			}
-			if (PairToRemove)
-			{
-				MoveToLocationOrActor3DStatics::CurrentMovingPawns.Remove(*PairToRemove);
-			}
-			else
-			{
-#if WITH_EDITOR
-				GEditor->AddOnScreenDebugMessage(INDEX_NONE, 5, FColor::Red,
-					TEXT("Latent Action Movement 3D - Finishing up action but it was never added to existing actions?"));
-#endif
-				UE_LOG(LogTemp, Warning, TEXT("Latent Action Movement 3D - Finishing up action but it was never added to existing actions?"));
-			}
-
+		}
 		Response.FinishAndTriggerIf(true, ResponseLatentInfo);
 		return;
 	}
@@ -197,7 +118,7 @@ void FLatentMoveToActorOrLocation3D::UpdateOperation(FLatentResponse& Response)
 		return;
 	}
 
-	if(UE::Geometry::Distance(MoveLocation, MovementTarget->GetActorLocation()) <= ClosenessThreshold) //Done moving?
+	if(UKismetMathLibrary::Vector_Distance(MoveLocation, MovementTarget->GetActorLocation()) <= ClosenessThreshold) //Done moving?
 	{
 		Output = EMoveOutputPins::OnCompleted; //Will get completed during next cycle at the  start of the function
 		return;
@@ -392,4 +313,3 @@ FVector FLatentMoveToActorOrLocation3D::DirectionToLocation(FVector StartLocatio
 	Direction.Normalize();
 	return Direction;
 }
-#pragma endregion
